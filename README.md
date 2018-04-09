@@ -11,14 +11,14 @@ The code compiles without errors using cmake and make.
 #### 2. The Model
 The mathematical model is as follow (107-112 in MPC.cpp:
 
-'''
+```
 x1 =(x0 + v0 * cos(psi0) * dt)
 y1 =(y0 + v0 * sin(psi0) * dt)
 psi1 = (psi0 + v0 * delta0 / Lf * dt)
 v1 = (v0 + a0 * dt)
 cte1 = ((f0 - y0) + (v0 * sin(epsi0) * dt))
 epsi1 = ((psi0 - psides0) + v0 * delta0 / Lf * dt)
-'''
+```
 where 1 represents the next state, and 0 the current state.
 
 #### 3. Time Step and Elapse Duration
