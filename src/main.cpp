@@ -133,7 +133,7 @@ int main() {
           double v = j[1]["speed"];
           double delta = j[1]["steering_angle"];
           double acc = j[1]["throttle"];
-          apply_delay(delay, px, py, psi, v, delta, acc);
+          //apply_delay(delay, px, py, psi, v, delta, acc);
           transform_to_local(px, py, psi, ptsx, ptsy);
           Eigen::VectorXd ptsx_xd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptsx.data(), ptsx.size());
           Eigen::VectorXd ptsy_xd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptsy.data(), ptsy.size());

@@ -33,7 +33,7 @@ In line 116 of main.cpp, a coordinate transform is applied to do the optimizatio
 
 #### 4. Latency
 
-Delay is applied in line 136 of main.cpp to account for the latency.
+Delay index is applied in line 146 of MPC.cpp to account for the latency. I also tried applying delay before optimization (line 68 in MPC.cpp) but the results were unstable;
 
 #### 5. Simulation
 

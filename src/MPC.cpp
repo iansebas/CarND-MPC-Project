@@ -13,6 +13,8 @@ using CppAD::AD;
 
 size_t N = 10;
 double dt = 0.05;
+double delay = 0.1;
+int delay_ix = ceil(delay/dt);
 
 size_t x_start = 0;
 size_t y_start = x_start + N;
@@ -242,5 +244,5 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   }
 
 
-  return {solution.x[delta_start],   solution.x[a_start]};
+  return {solution.x[delta_start + delay_ix],   solution.x[a_start + delay_ix]};
 }
