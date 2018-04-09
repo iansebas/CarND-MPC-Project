@@ -11,7 +11,7 @@ using CppAD::AD;
 */
 
 
-size_t N = 25;
+size_t N = 10;
 double dt = 0.05;
 
 size_t x_start = 0;
@@ -23,7 +23,7 @@ size_t epsi_start = cte_start + N;
 size_t delta_start = epsi_start + N;
 size_t a_start = delta_start + N - 1;
 
-double ref_v = 40;
+double ref_v = 60;
 const double Lf = 2.67;
 
 
@@ -40,22 +40,24 @@ class FG_eval {
 
     // The part of the cost based on the reference state.
     for (int t = 0; t < N; t++) {
-      fg[0] += CppAD::pow(vars[cte_start + t], 2);
-      fg[0] += CppAD::pow(vars[epsi_start + t], 2);
-      fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
+      fg[0] += 1000*CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += 1000*CppAD::pow(vars[epsi_start + t], 2);
+      fg[0] += 100*CppAD::pow(vars[v_start + t] - ref_v, 2);
     }
 
-    // // Minimize the use of actuators.
-    // for (int t = 0; t < N - 1; t++) {
-    //   fg[0] += CppAD::pow(vars[delta_start + t], 2);
-    //   fg[0] += CppAD::pow(vars[a_start + t], 2);
-    // }
+    // Minimize the use of actuators.
+    for (int t = 0; t < N - 1; t++) {
+      fg[0] += 10000*CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += 1000*CppAD::pow(vars[a_start + t], 2);
+    }
 
-    // // Minimize the value gap between sequential actuations.
-    // for (int t = 0; t < N - 2; t++) {
-    //   fg[0] += CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-    //   fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
-    // }
+    // Minimize the value gap between sequential actuations.
+    for (int t = 0; t < N - 2; t++) {
+      fg[0] += 10000000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 10000*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+      // Minimize sharp turns:
+      fg[0] += 10000*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 4)*CppAD::pow(vars[a_start + t], 4);
+    }
 
     //
     // Setup Constraints
@@ -73,6 +75,8 @@ class FG_eval {
     fg[1 + v_start] = vars[v_start];
     fg[1 + cte_start] = vars[cte_start];
     fg[1 + epsi_start] = vars[epsi_start];
+
+
 
     // The rest of the constraints
     for (int t = 1; t < N; t++) {
@@ -92,22 +96,20 @@ class FG_eval {
       AD<double> cte0 = vars[cte_start + t - 1];
       AD<double> epsi0 = vars[epsi_start + t - 1];
 
+
+      AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] * CppAD::pow(x0, 2);
+      AD<double> psides0 = CppAD::atan(coeffs[1]+ 2 * coeffs[2]);
+
       // Only consider the actuation at time t.
-      AD<double> delta0 = vars[delta_start + t - 1];
+      AD<double> delta0 = -vars[delta_start + t - 1];
       AD<double> a0 = vars[a_start + t - 1];
-
-      AD<double> f0 = coeffs[0] + coeffs[1] * x0;
-      AD<double> psides0 = CppAD::atan(coeffs[1]);
-
 
       fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
       fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
       fg[1 + psi_start + t] = psi1 - (psi0 + v0 * delta0 / Lf * dt);
       fg[1 + v_start + t] = v1 - (v0 + a0 * dt);
-      fg[1 + cte_start + t] =
-          cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
-      fg[1 + epsi_start + t] =
-          epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
+      fg[1 + cte_start + t] = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
+      fg[1 + epsi_start + t] = epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
     }
   }
 };
@@ -239,8 +241,6 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
     this->mpc_y_vals.push_back(solution.x[y_start + t +1]);
   }
 
-  return {solution.x[x_start + 1],   solution.x[y_start + 1],
-          solution.x[psi_start + 1], solution.x[v_start + 1],
-          solution.x[cte_start + 1], solution.x[epsi_start + 1],
-          solution.x[delta_start],   solution.x[a_start]};
+
+  return {solution.x[delta_start],   solution.x[a_start]};
 }

@@ -9,13 +9,6 @@
 #include "MPC.h"
 #include "json.hpp"
 
-
-/*
-  Adapted from udacity quiz solution: https://github.com/udacity/CarND-MPC-Quizzes/blob/master/mpc_to_line/solution/MPC.cpp
-*/
-
-
-
 // for convenience
 using json = nlohmann::json;
 
@@ -72,6 +65,28 @@ Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
   return result;
 }
 
+void transform_to_local(const double &px, const double &py, const double &psi, vector<double> &ptsx, vector<double> &ptsy){
+
+  assert(ptsx.size()==ptsy.size());
+
+  vector<double> local_ptsx;
+  vector<double> local_ptsy;
+  double local_x, local_y;
+  for (int i = 0; i < ptsx.size(); ++i){
+    ptsx[i] = ptsx[i] - px;
+    ptsy[i] = ptsy[i] - py;
+    local_x = cos(psi)*ptsx[i] + sin(psi)*ptsy[i];
+    local_y = -sin(psi)*ptsx[i] + cos(psi)*ptsy[i];
+    local_ptsx.push_back(local_x);
+    local_ptsy.push_back(local_y);
+
+  }
+
+  ptsx = local_ptsx;
+  ptsy = local_ptsy;
+
+}
+
 int main() {
   uWS::Hub h;
 
@@ -94,27 +109,35 @@ int main() {
           // j[1] is the data JSON object
           vector<double> ptsx = j[1]["ptsx"];
           vector<double> ptsy = j[1]["ptsy"];
-          Eigen::VectorXd ptsx_xd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptsx.data(), ptsx.size());
-          Eigen::VectorXd ptsy_xd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptsy.data(), ptsy.size());
-          auto coeffs = polyfit(ptsx_xd, ptsy_xd, 2);
           double px = j[1]["x"];
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
-          double cte = polyeval(coeffs, px) - py;
-          double epsi = psi - atan(coeffs[1]);
+          transform_to_local(px, py, psi, ptsx, ptsy);
+          Eigen::VectorXd ptsx_xd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptsx.data(), ptsx.size());
+          Eigen::VectorXd ptsy_xd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptsy.data(), ptsy.size());
+          auto coeffs = polyfit(ptsx_xd, ptsy_xd, 2);
+          double cte = polyeval(coeffs, 0);
+          double epsi = - atan(coeffs[1]);
 
+          /*
+          * TODO: Calculate steering angle and throttle using MPC.
+          *
+          * Both are in between [-1, 1].
+          *
+          */
 
-          Eigen::VectorXd state;
-          state << px, py, psi, v, cte, epsi;
+          Eigen::VectorXd state(6);
+          state << 0, 0, 0, v, cte, epsi;
           auto output = mpc.Solve(state,coeffs);
-          double steer_value = output[output.size()-2];
-          double throttle_value = output[output.size()-1];
+          double steer_value = output[0]/deg2rad(25);
+          double throttle_value = output[1];
+
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          msgJson["steering_angle"] = steer_value/deg2rad(25);
+          msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = throttle_value;
 
           //Display the MPC predicted trajectory 
@@ -128,8 +151,8 @@ int main() {
           msgJson["mpc_y"] = mpc_y_vals;
 
           //Display the waypoints/reference line
-          vector<double> next_x_vals;
-          vector<double> next_y_vals;
+          vector<double> next_x_vals = ptsx;
+          vector<double> next_y_vals = ptsy;
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
