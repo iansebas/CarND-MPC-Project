@@ -87,6 +87,23 @@ void transform_to_local(const double &px, const double &py, const double &psi, v
 
 }
 
+void apply_delay(double &dt, double &x0, double &y0, double& psi0, double &v0, double &delta0, double &a0){
+
+  double Lf = 2.67;
+
+  double x1 =(x0 + v0 * cos(psi0) * dt);
+  double y1 =(y0 + v0 * sin(psi0) * dt);
+  double psi1 = (psi0 + v0 * delta0 / Lf * dt);
+  double v1 = (v0 + a0 * dt);
+
+  x0 = x1;
+  y0 = y1;
+  psi0 = psi1;
+  v0 = v1;
+
+
+}
+
 int main() {
   uWS::Hub h;
 
@@ -107,12 +124,16 @@ int main() {
         string event = j[0].get<string>();
         if (event == "telemetry") {
           // j[1] is the data JSON object
+          double delay = 0.1;
           vector<double> ptsx = j[1]["ptsx"];
           vector<double> ptsy = j[1]["ptsy"];
           double px = j[1]["x"];
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+          double delta = j[1]["steering_angle"];
+          double acc = j[1]["throttle"];
+          apply_delay(delay, px, py, psi, v, delta, acc);
           transform_to_local(px, py, psi, ptsx, ptsy);
           Eigen::VectorXd ptsx_xd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptsx.data(), ptsx.size());
           Eigen::VectorXd ptsy_xd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptsy.data(), ptsy.size());
@@ -172,7 +193,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          this_thread::sleep_for(chrono::milliseconds(int(delay*1000.0)));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
